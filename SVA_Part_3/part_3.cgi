@@ -1,0 +1,288 @@
+#!/usr/bin/perl -w
+use v5.10; 
+use URI;
+use Fcntl qw(:flock); 
+use feature 'switch';
+
+my $path=$ENV{REQUEST_URI};
+my $meth=$ENV{REQUEST_METHOD};
+my $page_url = 'http';
+$page_url .= "://";
+if ($ENV{SERVER_PORT} != "80") {
+    $page_url .= $ENV{SERVER_NAME}.":".$ENV{SERVER_PORT}.$path;
+} else {
+    $page_url .= $ENV{SERVER_NAME}.$path;
+}
+print "Content-type: text/html";
+print "\r\n\r\n";
+
+my $url=URI->new($page_url);
+#print $url->path."<br>";
+my @parts=(split "/",$url->path);
+my $app=@parts[scalar @parts -1];
+#print $app;
+my @query;
+my @params;
+my @value;
+
+if(!($url->query) eq ""){
+@query=split("&",$url->query);
+for(my $i=0;$i<scalar @query;$i++){
+$params[$i]=(split /=/,$query[$i])[0];
+$value[$i]=(split /=/,$query[$i])[1];
+}
+}
+
+my $op_full;
+my $result;
+    
+my $calculator_header= <<"END_OF_MESSAGE";
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Calculator App</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+html{
+	font-size:16px;
+	background:#eee;
+	text-align:center;
+}
+h1{
+	font-size:3.2em;
+	text-align:center;
+	font-family:Arial, Helvetica, sans-serif;
+}
+input,label,select{
+	display:block;
+	width:12em;
+	width:12rem;
+	text-align: center;
+	margin:1em auto;
+}
+label{
+	width:auto;
+}
+
+input[type="submit"]{
+	border:solid #09F;
+	background:#FFF;
+}
+input[type="submit"]:hover{
+	background:#09F;
+	color:#FFF;
+	box-shadow:0 0 3px rgba(0,144,255,0.4),
+	0 0 4px rgba(0,0,0,0.6);
+}
+input[type="submit"]:active{
+	transform:translateY(3px);
+	box-shadow:none;
+}
+</style>
+</head>
+<body>
+<h1>Calculator App</h1>
+END_OF_MESSAGE
+
+my $calculator_form=<<"END_OF_MESSAGE";
+<form action='../part_3/calculator' method='get' name="calculator" id="calculator">
+<label for="a">Operand 1</label>
+<input type="text" name="a" id="a" required pattern="\\d+([\.]\\d+)?" placeholder="Enter 1st number">
+<label for="b">Operand 2</label>
+<input type="text" name="b" id="b" required pattern="\\d+([\.]\\d+)?" placeholder="Enter 2nd number">
+<label for="method">Operator</label>
+<select name="method" id="method">
+<option value="+" selected>+</option>
+<option value="-">-</option>
+<option value="*">*</option>
+<option value="/">/</option>
+</select>
+<input type='submit' value='calculate'>
+</form>
+END_OF_MESSAGE
+
+my $calculator_footer=<<"END_OF_MESSAGE";
+
+</body>
+</html>
+
+END_OF_MESSAGE
+
+
+
+
+my $guestbook_header=<<"END_OF_MESSAGE";
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Guestbook App</title>
+<style>
+html{
+	font-size:16px;
+	background:#eee;
+}
+h1{
+	font-size:3.2em;
+	font-family:Arial, Helvetica, sans-serif;
+}
+input,label,textarea{
+	display:block;
+	width:12em;
+	width:12rem;
+	text-align: center;
+	margin:1em auto;
+}
+label{
+	width:auto;
+}
+
+input[type="submit"]{
+	border:solid #09F;
+	background:#FFF;
+}
+input[type="submit"]:hover{
+	background:#09F;
+	color:#FFF;
+	box-shadow:0 0 3px rgba(0,144,255,0.4),
+	0 0 4px rgba(0,0,0,0.6);
+}
+input[type="submit"]:active{
+	transform:translateY(3px);
+	box-shadow:none;
+}
+
+.entry{
+	background:#eee;
+	border:solid 0.5px #ccc; 
+	color:#000;
+	padding:1em;
+	-webkit-transition: all 1s;
+	-moz-transition: all 1s;
+	-ms-transition: all 1s;
+	-o-transition: all 1s;
+	transition: all 1s;
+	}
+.entry:hover{
+	background:#ccc;
+	border-color#999;
+}
+.name{
+	font-style:italic;
+	font-size:1.2em;
+}
+.warn{
+	color:#C00;
+}
+</style>
+</head>
+<body>
+<h1>Guestbook App</h1>
+END_OF_MESSAGE
+
+
+my $gbook='<div id="gbook">';
+
+
+
+my $guestbook_footer=<<"END_OF_MESSAGE";
+<form action='../part_3/guestbook' method='get' name="guestbook" id="guestbook">
+<label for="name">Name(maxlength 12 characters):</label>
+<input type="text" name="name" id="name" placeholder="Your name here" required maxlength="12">
+<label for="comment">Comments:</label>
+<textarea name="comment" id="comment" placeholder="Type your comment here, max length is of an sms: 160 characters" rows="8" cols="30" maxlength="160" required></textarea>
+<input type='submit' value='Add entry'>
+</form>
+</body>
+</html>
+END_OF_MESSAGE
+
+if($app eq "calculator"){
+print $calculator_header;
+
+    if(($url->query eq "")){
+    print $calculator_form;
+    }
+    else{
+    my $a=$value[0];
+    my $b=$value[1];
+    my $op=$value[2];
+    $op =~ s/%(..)/sprintf("%c",hex $1)/eg;
+    
+    print "Inputs were ".$query[0]." and ".$query[1]."<br>";
+
+    $result="Not available";
+    $op_full="Invalid operation";
+    given( $op ) {
+    when('+'){$result=$a+$b;$op_full="Addition";}
+    when('-'){$result=$a-$b;$op_full="Subtraction";}
+    when('*'){$result=$a * $b ;$op_full="Multiplication";}
+    when('/'){if($b!=0) { $result=$a / $b;$op_full="Division";} }
+    }
+
+    print "Operation selected was ".$op_full."<br>";
+    print "Result is ".$result."<br>";
+
+    }
+
+print $calculator_footer;
+}
+elsif($app eq "guestbook"){
+print $guestbook_header;
+
+my $filename = 'gb';
+if(!($url->query eq "")){   
+my $name=$value[0];
+my $comment=$value[1];
+$name=join(' ',split(/\+/,$name));
+$comment=join(' ',split(/\+/,$comment));
+$name=~ s/%(..)/sprintf("%c",hex $1)/eg;
+$comment=~ s/%(..)/sprintf("%c",hex $1)/eg;
+
+$name=~ s/</&lt;/g;
+$name=~ s/>/&gt;/g;
+
+$comment=~ s/</&lt;/g;
+$comment=~ s/>/&gt;/g;
+
+$name=~ s/(\r\n)+/ /g;
+$comment=~ s/(\r\n)+/ /g;
+
+$name=~ s/( )+/ /g;
+$comment=~ s/( )+/ /g;
+
+
+if(!($name=~/^( )+$/) && !($comment=~/^( )+$/)){
+#write to the file , queries are non-empty
+open(my $fh, '>>', $filename) or print ("Could not open file for write");
+print $fh $name." : ".$comment."\n";
+close $fh;
+#print "done\n";
+}
+else{
+    print '<span class="warn">Name or Comments missing</span>';
+    }
+}
+
+#try reading file if it exists or gracefully degrade ;)
+open(FILE, '<', $filename) or print "<span class='warn'>No Entries Yet</span></body></html>";
+while(<FILE>){
+    chomp;
+    my @temp=(split /:/,$_);
+    my $name=$temp[0];
+    my $comment=$temp[1];
+    $gbook.='<div class="entry">';
+    $gbook.='<span class="name">'.$name.' says : </span>';
+    $gbook.='<q>'.$comment.'</q></div>';
+    
+    }
+close(FILE);
+$gbook.='</div>';
+print $gbook;
+print $guestbook_footer;
+
+}
+else{
+print 'Invalid app selected';
+}

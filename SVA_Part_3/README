@@ -1,0 +1,8 @@
+ASU ID: 1207648490
+Name: Sai Prashanth C
+
+The program reads the current url path and sets itself up to act accordingly as a calculator / guestbook app. Basic input sanitization is done for the guestbook to prevent attackers from including <script> tags that can execute. Similarly, inputs for calculator is checked to perform valid operations ( ie. division by zero is not allowed).
+
+The calculator front-end has a HTML5 pattern so that only numbers are entered into the fields. And all inputs need to be set before the form is processed.
+
+The cgi script is done in perl and thus lots of text processing opportunity, so I took the liberty of processing the textarea to replace empty spaces, too many newlines, tags etc with other suitable replacements.
