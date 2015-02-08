@@ -1,4 +1,4 @@
-ASU ID: 1207648490
+ASU ID: ******8490
 Name: Sai Prashanth C
 
 The program reads the current url path and sets itself up to act accordingly as a calculator / guestbook app. Basic input sanitization is done for the guestbook to prevent attackers from including <script> tags that can execute. Similarly, inputs for calculator is checked to perform valid operations ( ie. division by zero is not allowed).
